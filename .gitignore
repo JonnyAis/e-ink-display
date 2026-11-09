@@ -1,0 +1,13 @@
+.env
+*.cred
+*.pem
+id_*
+pi-backup/
+__pycache__/
+.pytest_cache/
+preview/
+sports_cache.json
+config.toml
+
+# Pi-only assets (licensed Marsden fonts, transit agency logo) live in ~/transit-display/assets on the Pi
+/assets/

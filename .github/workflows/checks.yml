@@ -1,0 +1,34 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+
+  personal-data:
+    runs-on: ubuntu-latest
+    # GitHub withholds secrets from pull requests opened from forks, so there is nothing to check against there.
+    # Those get checked when they are merged, by the push to main.
+    if: github.event.pull_request.head.repo.fork != true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python tools/check_personal.py --require-terms
+        env:
+          EINK_PRIVATE_TERMS: ${{ secrets.PERSONAL_TERMS }}

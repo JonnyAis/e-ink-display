@@ -1,0 +1,20 @@
+#!/bin/sh
+# Blocks commits that add likely secrets. Enable once per clone:  git config core.hooksPath .githooks
+# Not a substitute for GitHub secret scanning; it only catches obvious patterns.
+PATTERN='(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|(password|passwd|secret|api[_-]?key|token|psk)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9/+_-]{8,})'
+bad=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)(\.env|config\.toml|countdowns\.json|id_[a-z0-9]+|.*\.(pem|cred))$')
+if [ -n "$bad" ]; then echo "BLOCKED: sensitive file staged:"; echo "$bad"; exit 1; fi
+hits=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -v '^+++' | grep -iE "$PATTERN" | grep -viE 'placeholder|example|your_|<[a-z_ -]+>|os\.getenv|environ|SetupKey|SavePassword')
+if [ -n "$hits" ]; then
+  echo "BLOCKED: possible secret in staged changes:"; echo "$hits" | cut -c1-120
+  echo "If this is a false positive: git commit --no-verify (double-check first)."; exit 1
+fi
+# Personal values from your config.toml / .env (bus stops, names, ...) must stay out of the repo.
+for py in python3 python; do
+  if "$py" -c "import sys; sys.version_info >= (3, 11) or __import__('tomli')" >/dev/null 2>&1; then
+    "$py" tools/check_personal.py --staged || exit 1
+    exit 0
+  fi
+done
+echo "BLOCKED: could not run the personal-data check (needs Python 3.11+, or tomli on older versions)."
+exit 1

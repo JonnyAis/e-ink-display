@@ -1,0 +1,30 @@
+# Example settings. Copy to config.toml (git-ignored) or ~/.config/eink/config.toml and make it yours.
+# Anything you leave out falls back to the values here. Secrets (API keys) go in .env, not here.
+# See docs/CONFIG.md.
+
+[team]
+# The NBA team for the team page. Find the id in the ESPN URL for the team,
+# e.g. https://www.espn.com/nba/team/_/name/bos/boston-celtics -> abbr "BOS"; id from the teams API.
+id = "2"
+abbr = "BOS"
+name = "Celtics"
+conference = "East"     # "East" or "West": which standings to show
+
+[bus]
+# OneBusAway stop IDs (agency_stop, e.g. "1_12345"). The bus screen reads these.
+stops = []              # two stop IDs: left column, right column
+titles = []             # column titles, e.g. ["Next Bus Downtown (South)", "Next Bus Uptown (North)"]
+
+[rotation]
+# Sports pages shown between stretches of the bus screen (see docs/INTEGRATION.md).
+pages = ["team", "scores"]   # in order; "team" is the team above, "scores" is the scoreboard
+bus_secs = 120               # bus screen time between sports pages
+live_bus_secs = 45           # bus screen time while a favorite is playing live
+team_secs = 15               # time the team page stays up (a full refresh takes 2-3 s of that)
+scores_secs = 15             # time the scores page stays up
+leagues = ["NFL", "NHL"]     # leagues on the scores page: NBA, NFL, NHL, MLB, MLS
+favorites = []               # team abbreviations listed first on the scores page, e.g. ["NE", "BOS"]
+
+[greeting]
+# Name shown on the greeting interlude. Leave empty for a nameless "hello".
+name = ""
