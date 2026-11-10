@@ -62,9 +62,10 @@ It never touches `.env`, `.venv`, `assets/` (licensed fonts, logo), logs or the 
 is deployed. On Python < 3.11 it installs `tomli` into the venv.
 
 ### Deploying without your PC (the `live` tag)
-Run `Pi-InstallAutoDeploy` once. It copies your `config.toml` to the Pi, installs a timer that checks GitHub every
-5 minutes, and prints a key to add as a **read-only deploy key** on the repo (Settings > Deploy keys). From then on,
-moving the `live` tag deploys, from anywhere, with the same checks and automatic rollback:
+Run `Pi-InstallAutoDeploy` once. It copies your `config.toml` to the Pi and installs a timer that checks GitHub every
+5 minutes. The repo is public, so the Pi reads it over HTTPS with no key or token (for a private fork, set `REPO` to
+its `git@` URL and put a read-only deploy key at `~/.ssh/eink_deploy` on the Pi). From then on, moving the `live` tag
+deploys, from anywhere, with the same checks and automatic rollback:
 ```bash
 git tag -f live origin/main && git push -f origin live
 ```
