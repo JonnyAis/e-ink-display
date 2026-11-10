@@ -9,7 +9,7 @@ This repo is shared, so it holds **code and neutral defaults only**. Anything th
 | Neutral defaults (example team, empty stop list) | `config.example.toml` | yes |
 | Your team, bus stops, greeting name | `config.toml` (repo root) or `~/.config/eink/config.toml` | **no** (git-ignored) |
 | API keys (`OBA_KEY`) | `.env` on the device | **no** (git-ignored) |
-| Pi host / user | `~/.config/eink/pi.env` (`PI_HOST=...`, `PI_USER=...`), one per PC | **no** |
+| Pi host / user | `pi.env` in the repo root or `~/.config/eink/pi.env` (`PI_HOST=...`, `PI_USER=...`), one per PC | **no** (git-ignored) |
 | Logos, reference photos, one-off pages for your house | a private folder or private repo of your own | **no** |
 
 ## Set up

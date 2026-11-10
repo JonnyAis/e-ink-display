@@ -4,18 +4,22 @@
       . .\tools\pi.ps1
       Pi-Help
 
-  Your Pi's address goes in ~/.config/eink/pi.env, outside the repo, one setting per line:
+  Your Pi's address goes in pi.env next to config.toml in the project root (git-ignored), or in
+  ~/.config/eink/pi.env, one setting per line:
       PI_HOST=<pi-hostname-or-ip>
       PI_USER=<pi-user>
-  Environment variables with the same names override that file.
-  No password is stored here. Run Pi-SetupKey once, then everything is passwordless.
+  Environment variables with the same names override those files.
+  No password is stored anywhere. Run Pi-SetupKey once (you type the password into ssh), then it's passwordless.
 #>
 
 $script:PiSettings = @{}
-$script:PiSettingsFile = Join-Path $HOME ".config\eink\pi.env"
-if (Test-Path $script:PiSettingsFile) {
-    foreach ($line in Get-Content $script:PiSettingsFile) {
-        if ($line -match '^\s*(PI_[A-Z]+)\s*=\s*(.+?)\s*$') { $script:PiSettings[$Matches[1]] = $Matches[2] }
+# Project-root pi.env first (keeps all your local settings in one folder), then ~/.config/eink/pi.env.
+foreach ($f in (Join-Path (Split-Path -Parent $PSScriptRoot) "pi.env"), (Join-Path $HOME ".config\eink\pi.env")) {
+    if (-not (Test-Path $f)) { continue }
+    foreach ($line in Get-Content $f) {
+        if ($line -match '^\s*(PI_[A-Z]+)\s*=\s*(.+?)\s*$' -and -not $script:PiSettings[$Matches[1]]) {
+            $script:PiSettings[$Matches[1]] = $Matches[2]
+        }
     }
 }
 function Get-PiSetting([string]$Name, [string]$Default) {
@@ -36,8 +40,7 @@ function Pi-Target { "$script:PiUser@$script:PiHostName" }
 function Pi-Help {
     @"
 Pi-Find            Check the Pi is reachable (DNS, ping, SSH port)
-Pi-SavePassword    Store the Pi password encrypted (Windows DPAPI) in your user profile
-Pi-SetupKey        One-time: create an SSH key and install it on the Pi (asks for the password once)
+Pi-SetupKey        One-time: create an SSH key and install it on the Pi (you type the password into ssh once)
 Pi-Ssh             Open an interactive shell on the Pi
 Pi-Run <cmd>       Run one command on the Pi and print the output
 Pi-Status          Service state, uptime, temperature, last log lines
@@ -127,38 +130,21 @@ function Pi-Find {
     }
 }
 
-$script:CredFile = Join-Path $HOME ".eink-pi.cred"   # DPAPI-encrypted, per Windows user, outside the repo
-
-function Pi-SavePassword {
-    # Prompts for the password and stores it encrypted (only this Windows account on this PC can decrypt it).
-    Read-Host "Pi password for $(Pi-Target)" -AsSecureString | Export-Clixml $script:CredFile
-    Write-Host "Saved to $script:CredFile (encrypted)."
-}
-
 function Pi-SetupKey {
+    # You type the Pi password into ssh's own prompt, once. Nothing stores or forwards it.
     $key = Join-Path $HOME ".ssh\id_ed25519"
     if (-not (Test-Path $key)) {
         New-Item -ItemType Directory -Force (Split-Path $key) | Out-Null
-        ssh-keygen -t ed25519 -f $key -N '""' -C "$env:USERNAME@$env:COMPUTERNAME-eink"
+        # Empty passphrase. PowerShell before 7.3 drops a bare '' argument, so it needs '""' there instead.
+        $empty = if ($PSVersionTable.PSVersion -ge [version]"7.3") { '' } else { '""' }
+        ssh-keygen -q -t ed25519 -f $key -N $empty -C "$env:USERNAME@$env:COMPUTERNAME-eink"
+        if (-not (Test-Path "$key.pub")) { Write-Warning "ssh-keygen did not create $key."; return }
     }
     $remote = "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-    $askpass = $null
-    if (Test-Path $script:CredFile) {
-        # Feed the saved password to ssh via a temp askpass script that is deleted right after.
-        $plain = [System.Net.NetworkCredential]::new("", (Import-Clixml $script:CredFile)).Password
-        $askpass = Join-Path $env:TEMP "pi-askpass.cmd"
-        Set-Content $askpass "@echo off`r`necho $plain" -Encoding ascii
-        $env:SSH_ASKPASS = $askpass; $env:SSH_ASKPASS_REQUIRE = "force"
-    } else {
-        Write-Host "No saved password; enter the Pi password when prompted (or run Pi-SavePassword first)."
-    }
-    try {
-        Get-Content "$key.pub" | ssh @script:SshOpts (Pi-Target) $remote
-    } finally {
-        if ($askpass) { Remove-Item $askpass -Force -ErrorAction SilentlyContinue }
-        Remove-Item Env:SSH_ASKPASS, Env:SSH_ASKPASS_REQUIRE -ErrorAction SilentlyContinue
-    }
-    Write-Host "Done. Test with: Pi-Run hostname"
+    Get-Content "$key.pub" | ssh @script:SshOpts (Pi-Target) $remote
+    ssh @script:SshOpts -o BatchMode=yes (Pi-Target) "true" 2>$null
+    if ($LASTEXITCODE -eq 0) { Write-Host "Done: $(Pi-Target) now logs in with your key." }
+    else { Write-Warning "Key login still fails for $(Pi-Target). Check PI_USER / PI_HOST in pi.env." }
 }
 
 function Pi-Ssh { ssh @script:SshOpts (Pi-Target) }
@@ -303,7 +289,7 @@ function Pi-InstallAutoDeploy {
       your network: every 5 minutes the Pi checks the 'live' tag on GitHub and, if it moved, deploys that commit with
       the same checks and automatic rollback as Pi-Deploy. Merging to main never deploys by itself.
       Also copies your config.toml to the Pi (settings never go through GitHub).
-      Afterwards add the printed key to GitHub as a read-only deploy key (the repo is private).
+      The repo is public, so the Pi reads it over HTTPS with no key or token.
     #>
     ssh @script:SshOpts -o BatchMode=yes (Pi-Target) "true" 2>$null
     if ($LASTEXITCODE -ne 0) { Write-Warning "Can't log in to $(Pi-Target) with an SSH key. Run Pi-SetupKey first."; return }
@@ -315,8 +301,7 @@ function Pi-InstallAutoDeploy {
         "APP_DIR=$script:PiApp bash $remote/pi_autodeploy_install.sh install; rc=`$?; rm -rf $remote; exit `$rc"
     if ($LASTEXITCODE -eq 0) {
         Write-Host ""
-        Write-Host "Last step: add the key above at https://github.com/JonnyAis/e-ink-display/settings/keys/new"
-        Write-Host "(title 'e-ink Pi', leave 'Allow write access' unticked). Deploy by moving the tag:"
+        Write-Host "Auto-deploy is on. Deploy by moving the tag (Pi-Ship does this for you):"
         Write-Host "    git tag -f live origin/main; git push -f origin live"
         Write-Host "Check on it with: Pi-Run journalctl -u eink-autodeploy -n 30 --no-pager"
     }

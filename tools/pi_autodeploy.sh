@@ -4,20 +4,23 @@
 # tools/pi_deploy.sh (health check + automatic rollback). Merging to main alone never deploys; moving the tag does:
 #     git tag -f live <commit> && git push -f origin live
 #
-# One-time setup is done from your PC with Pi-InstallAutoDeploy (tools/pi.ps1). The repo is private, so the Pi reads
-# it with its own read-only GitHub deploy key (~/.ssh/eink_deploy); the key can't push and only sees this repo.
+# One-time setup is done from your PC with Pi-InstallAutoDeploy (tools/pi.ps1). The repo is public, so the Pi reads it
+# over HTTPS with no credentials. For a private fork, set REPO to its git@ URL and put a read-only deploy key at
+# ~/.ssh/eink_deploy; it is used only when that file exists.
 #
-# Environment: APP_DIR (default ~/transit-display), REPO (default git@github.com:JonnyAis/e-ink-display.git),
+# Environment: APP_DIR (default ~/transit-display), REPO (default https://github.com/JonnyAis/e-ink-display.git),
 #              TAG (default live). State lives in $APP_DIR/.autodeploy/: deployed (last good commit), failed (last
 #              commit that failed; not retried until the tag moves), last-run.log.
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-$HOME/transit-display}"
-REPO="${REPO:-git@github.com:JonnyAis/e-ink-display.git}"
+REPO="${REPO:-https://github.com/JonnyAis/e-ink-display.git}"
 TAG="${TAG:-live}"
 STATE="$APP_DIR/.autodeploy"
 MIRROR="$STATE/repo.git"
-export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/eink_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+if [ -f "$HOME/.ssh/eink_deploy" ]; then
+    export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/eink_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+fi
 
 mkdir -p "$STATE"
 log() { printf '[autodeploy] %s\n' "$*"; }
@@ -25,6 +28,8 @@ log() { printf '[autodeploy] %s\n' "$*"; }
 if [ ! -d "$MIRROR" ]; then
     log "cloning $REPO"
     git clone --quiet --bare "$REPO" "$MIRROR"
+elif [ "$(git -C "$MIRROR" remote get-url origin)" != "$REPO" ]; then
+    git -C "$MIRROR" remote set-url origin "$REPO"   # e.g. moved from a private deploy-key URL to the public one
 fi
 git -C "$MIRROR" fetch --quiet --force --prune origin "+refs/tags/$TAG:refs/tags/$TAG" 2>/dev/null || {
     log "no '$TAG' tag on GitHub yet (or GitHub unreachable); nothing to do"; exit 0; }

@@ -2,7 +2,7 @@
 # Blocks commits that add likely secrets. Enable once per clone:  git config core.hooksPath .githooks
 # Not a substitute for GitHub secret scanning; it only catches obvious patterns.
 PATTERN='(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[baprs]-[A-Za-z0-9-]{10,}|(password|passwd|secret|api[_-]?key|token|psk)["'"'"' ]*[:=]["'"'"' ]*[A-Za-z0-9/+_-]{8,})'
-bad=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)(\.env|config\.toml|countdowns\.json|id_[a-z0-9]+|.*\.(pem|cred))$')
+bad=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^|/)(\.env|pi\.env|config\.toml|countdowns\.json|id_[a-z0-9]+|.*\.(pem|cred))$')
 if [ -n "$bad" ]; then echo "BLOCKED: sensitive file staged:"; echo "$bad"; exit 1; fi
 hits=$(git diff --cached -U0 --no-color | grep -E '^\+' | grep -v '^+++' | grep -iE "$PATTERN" | grep -viE 'placeholder|example|your_|<[a-z_ -]+>|os\.getenv|environ|SetupKey|SavePassword')
 if [ -n "$hits" ]; then

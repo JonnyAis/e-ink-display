@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 # Runs ON THE PI, once (Pi-InstallAutoDeploy in tools/pi.ps1 copies it over and starts it).
 # Installs the pull-based auto-deploy: a systemd timer that runs tools/pi_autodeploy.sh every 5 minutes.
-#   pi_autodeploy_install.sh install     set up key, script and timer (safe to re-run)
-#   pi_autodeploy_install.sh uninstall   stop and remove the timer (keeps the key and the app)
+#   pi_autodeploy_install.sh install     set up the script and timer (safe to re-run)
+#   pi_autodeploy_install.sh uninstall   stop and remove the timer (keeps the app)
 set -euo pipefail
 
 APP_DIR="${APP_DIR:-$HOME/transit-display}"
 SRC="$(cd "$(dirname "$0")" && pwd)"
-KEY="$HOME/.ssh/eink_deploy"
 UNIT=/etc/systemd/system/eink-autodeploy
 
 do_install() {
@@ -18,11 +17,6 @@ do_install() {
         [ -f "$APP_DIR/config.toml" ] && cp "$APP_DIR/config.toml" "$APP_DIR/config.toml.bak"
         install -m 600 "$SRC/config.toml" "$APP_DIR/config.toml"
         echo "Installed your config.toml (the next deploy checks the app loads with it)."
-    fi
-
-    if [ ! -f "$KEY" ]; then
-        mkdir -p "$HOME/.ssh"; chmod 700 "$HOME/.ssh"
-        ssh-keygen -q -t ed25519 -N "" -C "eink-pi-deploy (read-only)" -f "$KEY"
     fi
 
     sudo -n tee "$UNIT.service" >/dev/null <<EOF
@@ -50,15 +44,14 @@ WantedBy=timers.target
 EOF
     sudo -n systemctl daemon-reload
     sudo -n systemctl enable --now eink-autodeploy.timer >/dev/null
-    echo "Timer installed. Read-only deploy key for GitHub (Settings > Deploy keys > Add, leave 'write' unticked):"
-    cat "$KEY.pub"
+    echo "Timer installed. The Pi checks the 'live' tag on GitHub every 5 minutes."
 }
 
 do_uninstall() {
     sudo -n systemctl disable --now eink-autodeploy.timer 2>/dev/null || true
     sudo -n rm -f "$UNIT.service" "$UNIT.timer"
     sudo -n systemctl daemon-reload
-    echo "Auto-deploy removed. The deploy key is still at $KEY; delete it on GitHub too if you're done with it."
+    echo "Auto-deploy removed."
 }
 
 case "${1:-}" in

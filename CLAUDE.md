@@ -19,3 +19,4 @@ Security: never commit secrets, `.env`, passwords, or licensed fonts/logos. Cred
 Enable the local secret check with `git config core.hooksPath .githooks`.
 
 Don't push to the Pi or restart the display service without the owner asking. `tools/pi.ps1` has the safe helpers.
+How cloud sessions reach the repo, the Pi and the owner's local settings: `docs/PI_CONNECTION.md` ("Working with Claude").
