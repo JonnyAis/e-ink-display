@@ -17,7 +17,7 @@ titles = []             # column titles, e.g. ["Next Bus Downtown (South)", "Nex
 
 [rotation]
 # Sports pages shown between stretches of the bus screen (see docs/INTEGRATION.md).
-pages = ["team", "scores"]   # in order; "team" is the team above, "scores" is the scoreboard
+pages = ["team"]            # in order: "team" (the team above) and/or "scores" (scoreboard for the leagues below)
 bus_secs = 120               # bus screen time between sports pages
 live_bus_secs = 45           # bus screen time while a favorite is playing live
 team_secs = 15               # time the team page stays up (a full refresh takes 2-3 s of that)

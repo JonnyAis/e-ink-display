@@ -40,7 +40,8 @@ Inspect your driver's real `draw_full`/`draw_partial` signatures first; never as
 
 The bus screen lives in the repo (`app/main.py`, copied from the Pi) and rotates sports pages in using
 `app/rotation.py`. The bus screen is home: every 2 minutes one sports page shows for 15 s, then the bus screen is
-fully redrawn. Pages alternate (team page, then Scores). While a game is live the bus stretch drops to 45 s.
+fully redrawn. By default only the team page rotates in; add "scores" to `[rotation] pages` for the scoreboard
+too (pages then alternate). While a game is live the bus stretch drops to 45 s.
 Pages refresh in a background thread (every 2 min, every 30 s during a live game); a page with no games or no data
 yet is skipped, so the bus screen is never interrupted by an empty page.
 
