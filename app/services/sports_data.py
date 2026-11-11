@@ -13,13 +13,43 @@ from pathlib import Path
 import requests
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports/{path}/scoreboard"
+
+# Short names for common ESPN scoreboards: short name -> (ESPN "sport/league" path, page title).
+# Any other ESPN head-to-head scoreboard works too: put its path in config, e.g. "soccer/ned.1" or "rugby/164205".
+# Find a path in the URL of the league's page on espn.com or in the ESPN API (site.api.espn.com/apis/site/v2/sports/).
+# Golf, racing and tennis scoreboards are not head-to-head games and are not supported.
 LEAGUES = {
-    "NFL": "football/nfl",
-    "NBA": "basketball/nba",
-    "NHL": "hockey/nhl",
-    "MLB": "baseball/mlb",
-    "MLS": "soccer/usa.1",
+    "NFL": ("football/nfl", "NFL"),
+    "NCAAF": ("football/college-football", "College Football"),
+    "CFL": ("football/cfl", "CFL"),
+    "NBA": ("basketball/nba", "NBA"),
+    "WNBA": ("basketball/wnba", "WNBA"),
+    "NCAAM": ("basketball/mens-college-basketball", "NCAA Men's"),
+    "NCAAW": ("basketball/womens-college-basketball", "NCAA Women's"),
+    "NHL": ("hockey/nhl", "NHL"),
+    "MLB": ("baseball/mlb", "MLB"),
+    "MLS": ("soccer/usa.1", "MLS"),
+    "NWSL": ("soccer/usa.nwsl", "NWSL"),
+    "EPL": ("soccer/eng.1", "Premier League"),
+    "LALIGA": ("soccer/esp.1", "La Liga"),
+    "BUNDESLIGA": ("soccer/ger.1", "Bundesliga"),
+    "SERIEA": ("soccer/ita.1", "Serie A"),
+    "LIGUE1": ("soccer/fra.1", "Ligue 1"),
+    "UCL": ("soccer/uefa.champions", "Champions League"),
 }
+
+
+def resolve_league(name):
+    """Short name ("NBA") or ESPN path ("soccer/ned.1") -> (path, title). Raises ValueError if neither."""
+    key = str(name).strip()
+    if key.upper() in LEAGUES:
+        return LEAGUES[key.upper()]
+    if key.count("/") == 1 and all(part.strip() for part in key.split("/")):
+        path = key.lower()
+        return path, path.split("/")[1].upper()
+    raise ValueError(f"unknown league {name!r}: use one of {', '.join(LEAGUES)} or an ESPN path like 'soccer/ned.1'")
+
+
 CACHE_FILE = Path(os.environ.get("SPORTS_CACHE", "sports_cache.json"))
 _STATE = {"in": "live", "post": "final", "pre": "scheduled"}
 
@@ -64,11 +94,11 @@ def sort_games(games, favorites=()):
 
 
 def fetch_games(leagues=("NBA",), favorites=(), timeout=(3, 10)):
-    """Fetch and merge scoreboards. Raises if every league fails."""
+    """Fetch and merge scoreboards (short names or ESPN paths). Raises if every league fails."""
     out, errors = [], 0
     for lg in leagues:
         try:
-            r = requests.get(BASE.format(path=LEAGUES[lg]), timeout=timeout)
+            r = requests.get(BASE.format(path=resolve_league(lg)[0]), timeout=timeout)
             r.raise_for_status()
             out += normalize_scoreboard(r.json(), lg)
         except Exception as e:
@@ -79,14 +109,22 @@ def fetch_games(leagues=("NBA",), favorites=(), timeout=(3, 10)):
     return sort_games(out, favorites)
 
 
-def save_cache(games):
-    CACHE_FILE.write_text(json.dumps({"t": time.time(), "games": games}))
+def _cache_file(key):
+    if not key:
+        return CACHE_FILE
+    safe = "".join(c if c.isalnum() else "_" for c in str(key).lower())
+    return CACHE_FILE.with_name(f"{CACHE_FILE.stem}_{safe}{CACHE_FILE.suffix}")
 
 
-def load_cache():
+def save_cache(games, key=""):
+    """Remember the last good games; `key` keeps one cache per page (e.g. the league)."""
+    _cache_file(key).write_text(json.dumps({"t": time.time(), "games": games}))
+
+
+def load_cache(key=""):
     """Return (games, age_seconds) or (None, None)."""
     try:
-        d = json.loads(CACHE_FILE.read_text())
+        d = json.loads(_cache_file(key).read_text())
         return d["games"], time.time() - d["t"]
     except (OSError, ValueError, KeyError):
         return None, None

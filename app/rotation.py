@@ -11,6 +11,7 @@ the bus screen is never interrupted by an empty or error page.
 
 This module does no hardware I/O and never sleeps on its own; `run` takes `show`, `restore` and `sleep`
 callables, which keeps it testable. Settings come from config.toml's [rotation] section (see `from_config`).
+The scoreboard is one page per league, so sports never mix on one screen.
 """
 from __future__ import annotations
 
@@ -118,32 +119,36 @@ def team_page(show_s=15.0) -> Page:
     return Page("team", build, show_s)
 
 
-def scores_page(leagues=("NFL", "NHL"), favorites=(), max_games=4, show_s=15.0) -> Page:
-    """Today's games in `leagues`, favorites first. Skipped when there are no games."""
+def scores_page(league="NFL", favorites=(), only_favorites=False, max_games=4, show_s=15.0) -> Page:
+    """Today's games in one league (a short name like "NBA" or an ESPN path like "soccer/ned.1"), favorites
+    first. With only_favorites, just the favorites' games. Skipped when there are no games to show."""
     from datetime import datetime
     from app.pages.sports import render_sports_page
-    from app.services.sports_data import fetch_games, load_cache, save_cache
+    from app.services.sports_data import fetch_games, load_cache, resolve_league, save_cache
 
+    path, title = resolve_league(league)
     fav = {f.upper() for f in favorites}
 
     def build(size):
         try:
-            games = fetch_games(leagues, favorites)
-            save_cache(games)
+            games = fetch_games((path,), favorites)
+            save_cache(games, path)
             stale_min = 0
         except Exception:
-            games, age = load_cache()
+            games, age = load_cache(path)
             if games is None:
                 raise
             stale_min = int(age // 60)
+        if only_favorites:
+            games = [g for g in games if {g["away"], g["home"]} & fav]
         games = games[:max_games]
         if not games:
             return None, False
         live = any(g["state"] == "live" and {g["away"], g["home"]} & fav for g in games)
         stamp = datetime.now().strftime("%I:%M %p").lstrip("0")
-        img = render_sports_page(games, stamp, stale=stale_min >= 10, stale_minutes=stale_min, size=size)
+        img = render_sports_page(games, stamp, stale=stale_min >= 10, stale_minutes=stale_min, size=size, title=title)
         return img, live
-    return Page("scores", build, show_s)
+    return Page(f"scores:{title}", build, show_s)
 
 
 def from_config(clock=time.monotonic) -> Rotation:
@@ -159,11 +164,25 @@ def from_config(clock=time.monotonic) -> Rotation:
     def names(key, default):
         return tuple(str(v).strip().upper() for v in (config.get(f"rotation.{key}", default) or ()) if str(v).strip())
 
-    makers = {
-        "TEAM": lambda: team_page(num("team_secs", 15)),
-        "CELTICS": lambda: team_page(num("team_secs", 15)),   # old name
-        "SCORES": lambda: scores_page(names("leagues", ("NFL", "NHL")), names("favorites", ()),
-                                      show_s=num("scores_secs", 15)),
-    }
-    pages = [makers[n]() for n in names("pages", ("team",)) if n in makers]
+    favorites = names("favorites", ())
+    only_fav = bool(config.get("rotation.only_favorites", False))
+
+    def scores(league):
+        try:
+            return [scores_page(league, favorites, only_fav, show_s=num("scores_secs", 15))]
+        except ValueError as e:   # a typo in one league must not take the display down
+            log.warning("skipping scores page: %s", e)
+            return []
+
+    pages = []
+    for n in names("pages", ("team",)):
+        if n in ("TEAM", "CELTICS"):   # "celtics" is the old name
+            pages.append(team_page(num("team_secs", 15)))
+        elif n == "SCORES":            # one page per league, in the order of `leagues`
+            for lg in names("leagues", ("NFL", "NHL")):
+                pages += scores(lg)
+        elif n.startswith("SCORES:"):  # one league placed explicitly, e.g. "scores:NBA"
+            pages += scores(n.split(":", 1)[1])
+        else:
+            log.warning("unknown page %r in [rotation] pages", n)
     return Rotation(pages, bus_s=num("bus_secs", 120), live_bus_s=num("live_bus_secs", 45), clock=clock)
