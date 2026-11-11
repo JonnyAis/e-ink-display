@@ -7,7 +7,7 @@ import pytest
 from app import style
 from app.pages.sports import render_sports_page
 from app.preview_team import NOW, variants
-from app.preview_sports import GAMES
+from app.preview_sports import GAMES, LEAGUES
 from app.pages.team import render_team
 from helpers import overlaps, record_drawing
 
@@ -20,9 +20,10 @@ def _team(name):
 
 PAGES = {f"team/{n}": _team(n) for n in variants()}
 PAGES.update({
-    "sports/normal": lambda: render_sports_page(GAMES, "8:14 PM"),
-    "sports/stale": lambda: render_sports_page(GAMES, "8:14 PM", stale=True, stale_minutes=7),
-    "sports/empty": lambda: render_sports_page([], "8:14 PM"),
+    "sports/normal": lambda: render_sports_page(GAMES, "8:14 PM", title="NFL"),
+    "sports/stale": lambda: render_sports_page(GAMES, "8:14 PM", stale=True, stale_minutes=7, title="NFL"),
+    "sports/empty": lambda: render_sports_page([], "8:14 PM", title="NHL"),
+    **{f"sports/{k}": (lambda t=t, g=g: render_sports_page(g, "8:14 PM", title=t)) for k, (t, g) in LEAGUES.items()},
     "message/offline": lambda: style.message_screen("Team", "No data yet", stale_minutes=0),
 })
 

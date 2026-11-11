@@ -1,6 +1,7 @@
 """Sports scoreboard page: pure Pillow, no hardware imports.
 
-render_sports_page(games, updated_at, stale=False, stale_minutes=0) -> PIL.Image (mode 'L', 1872x1404)
+render_sports_page(games, updated_at, stale=False, stale_minutes=0, title="Scores") -> PIL.Image (mode 'L', 1872x1404)
+One league per page; `title` is the league's name (e.g. "NBA").
 Look and feel come from app.style (see docs/STYLE_GUIDE.md): a live game is the "urgent" inverted card.
 """
 from app import style
@@ -24,9 +25,9 @@ def _card(d, box, g):
         style.draw(d, (x2 - pad, y), str(score) if scored else "–", "DISPLAY", fill=fg, anchor="ra")
 
 
-def render_sports_page(games, updated_at="", stale=False, stale_minutes=0, size=style.PANEL):
+def render_sports_page(games, updated_at="", stale=False, stale_minutes=0, size=style.PANEL, title="Scores"):
     img, d = style.new_canvas(size)
-    style.header(img, "Scores", clock_text=updated_at or None, caption="Updated" if updated_at else None,
+    style.header(img, title, clock_text=updated_at or None, caption="Updated" if updated_at else None,
                  stale_minutes=stale_minutes if stale else None)
     if not games:
         style.draw(d, (size[0] // 2, (size[1] + style.HEADER_H) // 2), "No games right now", "DISPLAY", anchor="mm")

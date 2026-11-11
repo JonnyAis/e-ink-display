@@ -17,13 +17,18 @@ titles = []             # column titles, e.g. ["Next Bus Downtown (South)", "Nex
 
 [rotation]
 # Sports pages shown between stretches of the bus screen (see docs/INTEGRATION.md).
-pages = ["team"]            # in order: "team" (the team above) and/or "scores" (scoreboard for the leagues below)
+pages = ["team"]             # in order: "team" (the team above), "scores" (one page per league below),
+                             # or one league placed on its own, e.g. "scores:NBA"
 bus_secs = 120               # bus screen time between sports pages
 live_bus_secs = 45           # bus screen time while a favorite is playing live
 team_secs = 15               # time the team page stays up (a full refresh takes 2-3 s of that)
-scores_secs = 15             # time the scores page stays up
-leagues = ["NFL", "NHL"]     # leagues on the scores page: NBA, NFL, NHL, MLB, MLS
-favorites = []               # team abbreviations listed first on the scores page, e.g. ["NE", "BOS"]
+scores_secs = 15             # time each scores page stays up
+# Leagues for "scores", one page each (never mixed). Short names: NFL, NCAAF, CFL, NBA, WNBA, NCAAM, NCAAW, NHL, MLB,
+# MLS, NWSL, EPL, LALIGA, BUNDESLIGA, SERIEA, LIGUE1, UCL. Any other ESPN head-to-head league works by its ESPN path,
+# e.g. "soccer/ned.1" (see docs/INTEGRATION.md). Golf, racing and tennis are not supported.
+leagues = ["NFL", "NHL"]
+favorites = []               # team abbreviations listed first on scores pages, e.g. ["SEA", "LAL"]
+only_favorites = false       # true: scores pages show only the favorites' games (and skip a league with none)
 
 [greeting]
 # Name shown on the greeting interlude. Leave empty for a nameless "hello".

@@ -133,8 +133,54 @@ def test_settings_come_from_config(monkeypatch, tmp_path):
     finally:
         monkeypatch.undo()
         config.reload()
-    assert [p.name for p in r.pages] == ["scores"]
+    assert [p.name for p in r.pages] == ["scores:NBA"]
     assert (r.bus_s, r.live_bus_s, r.pages[0].show_s) == (90, 45, 12)
+
+
+def _from(monkeypatch, tmp_path, text):
+    from app import config
+    cfg = tmp_path / "config.toml"
+    cfg.write_text(text)
+    monkeypatch.setenv("EINK_CONFIG", str(cfg))
+    config.reload()
+    try:
+        return rot.from_config()
+    finally:
+        monkeypatch.undo()
+        config.reload()
+
+
+def test_scores_is_one_page_per_league(monkeypatch, tmp_path):
+    r = _from(monkeypatch, tmp_path,
+              '[rotation]\npages = ["team", "scores"]\nleagues = ["NFL", "epl", "soccer/ned.1", "nope"]\n')
+    assert [p.name for p in r.pages] == ["team", "scores:NFL", "scores:Premier League", "scores:NED.1"]
+
+
+def test_a_league_can_be_placed_on_its_own(monkeypatch, tmp_path):
+    r = _from(monkeypatch, tmp_path, '[rotation]\npages = ["scores:NHL", "team", "scores:wnba"]\n')
+    assert [p.name for p in r.pages] == ["scores:NHL", "team", "scores:WNBA"]
+
+
+def _offline_with(monkeypatch, tmp_path, games, path):
+    from app.services import sports_data
+    monkeypatch.setattr(sports_data, "CACHE_FILE", tmp_path / "c.json")
+    sports_data.save_cache(games, path)
+
+    def offline(*a, **k):
+        raise RuntimeError("no network")
+    monkeypatch.setattr(sports_data, "fetch_games", offline)
+
+
+def test_only_favorites_hides_other_games(monkeypatch, tmp_path):
+    game = lambda a, h: {"away": a, "home": h, "away_score": 1, "home_score": 0, "status": "Final",
+                         "state": "final", "league": "", "start": ""}
+    _offline_with(monkeypatch, tmp_path, [game("AAA", "BBB")], "hockey/nhl")
+    p = rot.scores_page("NHL", ("ZZZ",), only_favorites=True)
+    p.refresh((1872, 1404))
+    assert p.img is None                       # nothing of ours today: the page is skipped
+    p = rot.scores_page("NHL", ("ZZZ",))
+    p.refresh((1872, 1404))
+    assert p.img is not None
 
 
 def test_default_rotation_is_the_team_page_only():
@@ -148,12 +194,7 @@ def test_scores_page_uses_cache_when_offline(monkeypatch, tmp_path):
     from app.services import sports_data
     games = [{"away": "NE", "home": "NYJ", "away_score": 10, "home_score": 7, "status": "Q2 3:00",
               "state": "live", "league": "NFL", "start": ""}]
-    monkeypatch.setattr(sports_data, "CACHE_FILE", tmp_path / "c.json")
-    sports_data.save_cache(games)
-
-    def offline(*a, **k):
-        raise RuntimeError("no network")
-    monkeypatch.setattr(sports_data, "fetch_games", offline)
-    p = rot.scores_page(("NFL",), ("NE",))
+    _offline_with(monkeypatch, tmp_path, games, "football/nfl")
+    p = rot.scores_page("NFL", ("NE",))
     p.refresh((1872, 1404))
     assert p.img is not None and p.live

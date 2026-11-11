@@ -40,13 +40,21 @@ Inspect your driver's real `draw_full`/`draw_partial` signatures first; never as
 
 The bus screen lives in the repo (`app/main.py`, copied from the Pi) and rotates sports pages in using
 `app/rotation.py`. The bus screen is home: every 2 minutes one sports page shows for 15 s, then the bus screen is
-fully redrawn. By default only the team page rotates in; add "scores" to `[rotation] pages` for the scoreboard
-too (pages then alternate). While a game is live the bus stretch drops to 45 s.
+fully redrawn. By default only the team page rotates in; add "scores" to `[rotation] pages` for scoreboards too
+(pages then take turns). While a favorite's game is live the bus stretch drops to 45 s.
+
+Scoreboards are one page per league, titled with the league's name, so sports never mix on one screen. `leagues`
+takes short names (`NFL`, `NBA`, `EPL`, ... listed in `config.example.toml` and `LEAGUES` in
+`app/services/sports_data.py`) or any ESPN scoreboard path, `"<sport>/<league>"`: the part of
+`site.api.espn.com/apis/site/v2/sports/<sport>/<league>/scoreboard` for that league, e.g. `"soccer/ned.1"`.
+Only head-to-head sports work (golf, racing and tennis scoreboards have a different shape). Place a single league
+in the order you like with `"scores:<league>"` in `pages`. `favorites` puts those teams first on every scores page;
+`only_favorites = true` hides other games and skips a league whose favorites aren't playing.
 Pages refresh in a background thread (every 2 min, every 30 s during a live game); a page with no games or no data
 yet is skipped, so the bus screen is never interrupted by an empty page.
 
 Settings live in `config.toml` under `[rotation]` (defaults and comments in `config.example.toml`): `pages`,
-`bus_secs`, `live_bus_secs`, `team_secs`, `scores_secs`, `leagues`, `favorites`. The bus screen reads its two stop
+`bus_secs`, `live_bus_secs`, `team_secs`, `scores_secs`, `leagues`, `favorites`, `only_favorites`. The bus screen reads its two stop
 IDs and column titles from `[bus] stops` / `titles`; it exits with a message if the stops are not set.
 
 The Marsden fonts and transit logo stay on the Pi in `~/transit-display/assets/` (licensed; not in git).
