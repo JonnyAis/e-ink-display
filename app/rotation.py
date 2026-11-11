@@ -165,5 +165,5 @@ def from_config(clock=time.monotonic) -> Rotation:
         "SCORES": lambda: scores_page(names("leagues", ("NFL", "NHL")), names("favorites", ()),
                                       show_s=num("scores_secs", 15)),
     }
-    pages = [makers[n]() for n in names("pages", ("team", "scores")) if n in makers]
+    pages = [makers[n]() for n in names("pages", ("team",)) if n in makers]
     return Rotation(pages, bus_s=num("bus_secs", 120), live_bus_s=num("live_bus_secs", 45), clock=clock)

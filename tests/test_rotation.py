@@ -137,11 +137,11 @@ def test_settings_come_from_config(monkeypatch, tmp_path):
     assert (r.bus_s, r.live_bus_s, r.pages[0].show_s) == (90, 45, 12)
 
 
-def test_defaults_rotate_team_and_scores():
+def test_default_rotation_is_the_team_page_only():
     r = rot.from_config()
-    assert [p.name for p in r.pages] == ["team", "scores"]
+    assert [p.name for p in r.pages] == ["team"]
     assert (r.bus_s, r.live_bus_s) == (120, 45)
-    assert [p.show_s for p in r.pages] == [15, 15]
+    assert [p.show_s for p in r.pages] == [15]
 
 
 def test_scores_page_uses_cache_when_offline(monkeypatch, tmp_path):
