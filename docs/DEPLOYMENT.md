@@ -69,7 +69,8 @@ deploys, from anywhere, with the same checks and automatic rollback:
 ```bash
 git tag -f live origin/main && git push -f origin live
 ```
-Merging to `main` never deploys by itself. The Pi only connects out to GitHub; nothing on your network is opened.
+Without git, run the **ship** workflow from the Actions tab (it ships `main` if its checks passed); Claude cloud
+sessions deploy this way. Merging to `main` never deploys by itself. The Pi only connects out to GitHub; nothing on your network is opened.
 A commit that fails is not retried until the tag moves again. Logs: `journalctl -u eink-autodeploy`; state in
 `~/transit-display/.autodeploy/`. Remove it with `pi_autodeploy_install.sh uninstall` on the Pi.
 
