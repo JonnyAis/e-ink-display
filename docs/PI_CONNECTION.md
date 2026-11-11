@@ -43,7 +43,7 @@ A cloud session can't reach your home network, so each kind of change has one ro
 | Change | Route | Needs you? |
 |---|---|---|
 | Code and docs | branch + PR on GitHub | review and merge |
-| Deploy to the Pi | move the `live` tag (only when you ask); the Pi pulls it within 5 minutes | ask for it |
+| Deploy to the Pi | runs the `ship` workflow (only when you ask), which moves `live`; the Pi pulls it within 5 minutes | ask for it |
 | Your `config.toml` / `pi.env` | edits the files in your clone through folder access in the Claude app | approve the folder once |
 | Send settings to the Pi, run `Pi-*` | a Remote Control session on your PC runs `Pi-PushConfig` etc. | approve the session |
 

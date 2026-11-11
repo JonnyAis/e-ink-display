@@ -1,0 +1,46 @@
+name: ship
+
+# Deploys to the Pi by moving the `live` tag; the Pi's auto-deploy timer picks it up within 5 minutes and rolls back
+# by itself if the new version doesn't stay up. Start it from the Actions tab ("Run workflow"), or from a Claude cloud
+# session, which can't push tags itself. Only commits already on main whose checks passed can be shipped.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit or branch on main to ship"
+        default: main
+        required: true
+
+permissions:
+  contents: write
+  checks: read
+
+concurrency: ship
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Move live
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse --verify "origin/$REF^{commit}" 2>/dev/null || git rev-parse --verify "$REF^{commit}")
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::${sha:0:7} is not on main"; exit 1; }
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/check-runs?per_page=100" \
+                   --jq '[.check_runs[] | select(.name != "ship")] | map("\(.name) \(.status) \(.conclusion)") | .[]')
+          echo "$runs"
+          [ -n "$runs" ] || { echo "::error::no checks found for ${sha:0:7}"; exit 1; }
+          if echo "$runs" | grep -vqE ' completed (success|skipped)$'; then
+            echo "::error::checks have not all passed on ${sha:0:7}"; exit 1
+          fi
+          current=$(git rev-parse -q --verify "refs/tags/live^{commit}" || true)
+          if [ "$current" = "$sha" ]; then echo "${sha:0:7} is already live"; exit 0; fi
+          git tag -f live "$sha"
+          git push -f origin refs/tags/live
+          echo "live -> ${sha:0:7} ($(git log -1 --format=%s "$sha")). The Pi deploys it within 5 minutes." | tee -a "$GITHUB_STEP_SUMMARY"
