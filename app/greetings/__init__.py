@@ -37,7 +37,7 @@ Frames = list  # [(PIL.Image, hold_seconds), ...]
 STYLES: dict[str, Callable] = {}
 
 # Style modules in this package. Add yours here (one line) so it registers on import.
-STYLE_MODULES = ("spooky",)
+STYLE_MODULES = ("spooky", "slow_build")
 
 
 def style(name: str):

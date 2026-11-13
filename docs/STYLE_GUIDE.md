@@ -34,6 +34,7 @@ Designed for the 1872x1404 panel (about 10.3 in, ~227 ppi; confirm from your pan
 | BODY | 52 | Table rows and lists |
 | LABEL | 44 | Captions, units, status tags (the minimum) |
 | SPOOKY | 320 | **Greetings only.** Creepster novelty face; see "Display faces" below |
+| BUBBLY | 440 | **Greetings only.** Sniglet bubble letters for the slow-build greeting; see "Display faces" below |
 
 | Ink | Value | Use |
 |---|---|---|
@@ -49,18 +50,20 @@ Fonts: bundled Barlow (SIL OFL, `app/assets/fonts/`). Set `EINK_FONT_DIR` to a f
 ## Display faces (greetings only)
 
 One deliberate exception to "one type family": novelty display faces for greetings (`app/greetings/`), the short
-full-screen "hello, <name>" moments. Today there is one:
+full-screen "hello, <name>" moments. Today there are two:
 
 | Role | Font | License |
 |---|---|---|
 | `SPOOKY` (320 px) | Creepster, `app/assets/fonts/Creepster-Regular.ttf` | Copyright 2011 Font Diner, Inc; SIL Open Font License 1.1 (`OFL-Creepster.txt`). "Creepster" is a Reserved Font Name, so a modified copy must be renamed |
+| `BUBBLY` (440 px) | Sniglet ExtraBold, `app/assets/fonts/Sniglet-ExtraBold.ttf` | Copyright 2008 Haley Fiege, 2012 Brenda Gallo, 2013 Pablo Impallari; SIL Open Font License 1.1 (`OFL-Sniglet.txt`) |
 
 Rules, enforced by tests:
 
 - Only greeting modules may use these roles (`INTERLUDE_ROLES` in `app/style.py`; `tests/test_style.py`).
   Never for data, labels, or anything someone needs to read quickly.
-- Greeting frames are drawn with `style.interlude_screen()`: one centred line, white on pure black, full bleed, no
-  header. Frames are snapped to pure black/white so they can use the fast A2 mode.
+- Greeting frames are full bleed with no header, usually drawn with `style.interlude_screen()` (one centred line,
+  white on pure black). Every frame is snapped to pure black/white so it can use the fast A2 mode; that is what
+  lets a multi-frame style such as `slow_build` play as a short animation without a black flash per frame.
 - They pass every other conformance check (size, inks, minimum size, safe edges, collisions). Only the header/margin
   check is replaced by "pure black/white" (`FULL_BLEED` in `tests/test_pages_conform.py`).
 - Principle 9 applies: shown for seconds, then the bus screen always comes back.
