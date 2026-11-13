@@ -10,6 +10,7 @@ class Drawn:
     inks: set = field(default_factory=set)       # every fill/outline value used
     font_sizes: set = field(default_factory=set)  # every text size used
     texts: list = field(default_factory=list)     # (bbox, string) for every text drawn
+    owners: list = field(default_factory=list)    # the ImageDraw each text went on (parallel to texts)
 
 
 @contextmanager
@@ -36,6 +37,7 @@ def record_drawing():
             rec.inks.add(fill)
         rec.font_sizes.add(getattr(font, "size", None))
         rec.texts.append((self.textbbox(xy, text, font=font, anchor=anchor), text))
+        rec.owners.append(self)   # kept alive, so identity is never reused
         return orig_text(self, xy, text, fill=fill, font=font, anchor=anchor, *args, **kwargs)
 
     for name in ("line", "rectangle", "rounded_rectangle", "ellipse", "polygon"):

@@ -54,10 +54,11 @@ Short full-screen "hello, <name>" moments over the bus screen. Off unless you li
 ```toml
 [[greetings]]
 name = "Alex"          # empty -> a plain "hello"
-style = "spooky"       # see app/greetings/ for the styles
+style = "spooky"       # "spooky" (one frame) or "slow_build" (the name builds letter by letter)
 every_secs = 60        # how often
 show_secs = 2          # how long it stays up; must be less than every_secs
 ```
+For `slow_build`, give it about 10 seconds (`show_secs = 10`): roughly two thirds builds the name, the rest holds it.
 Entries with an unknown style or a `show_secs` that isn't shorter than `every_secs` are logged and skipped.
 The older single setting `[greeting] name = "..."` still works and means one spooky greeting every 60 s for 2 s.
 The names are personal values, so after adding one, refresh the CI copy with `Pi-SyncPrivacyTerms`, and copy your
