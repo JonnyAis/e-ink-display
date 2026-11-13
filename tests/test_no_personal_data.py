@@ -23,7 +23,7 @@ def test_tests_use_the_example_config():
 
 def test_example_config_has_no_personal_values():
     assert config._read(config.EXAMPLE)["bus"]["stops"] == []
-    assert config._read(config.EXAMPLE)["greeting"]["name"] == ""
+    assert config._read(config.EXAMPLE).get("greetings", []) == []   # greetings are opt-in
 
 
 def test_no_personal_values_in_tracked_files():

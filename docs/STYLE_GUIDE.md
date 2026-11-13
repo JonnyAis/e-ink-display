@@ -33,6 +33,7 @@ Designed for the 1872x1404 panel (about 10.3 in, ~227 ppi; confirm from your pan
 | HEADING | 60 | Panel titles |
 | BODY | 52 | Table rows and lists |
 | LABEL | 44 | Captions, units, status tags (the minimum) |
+| SPOOKY | 320 | **Greetings only.** Creepster novelty face; see "Display faces" below |
 
 | Ink | Value | Use |
 |---|---|---|
@@ -45,6 +46,28 @@ Geometry: margin 40, gap 28, header 200, corner radius 30, nothing within 24 px 
 Fonts: bundled Barlow (SIL OFL, `app/assets/fonts/`). Set `EINK_FONT_DIR` to a folder with `Font-Regular.ttf` and
 `Font-Bold.ttf` to use your own; the repo does not ship licensed fonts.
 
+## Display faces (greetings only)
+
+One deliberate exception to "one type family": novelty display faces for greetings (`app/greetings/`), the short
+full-screen "hello, <name>" moments. Today there is one:
+
+| Role | Font | License |
+|---|---|---|
+| `SPOOKY` (320 px) | Creepster, `app/assets/fonts/Creepster-Regular.ttf` | Copyright 2011 Font Diner, Inc; SIL Open Font License 1.1 (`OFL-Creepster.txt`). "Creepster" is a Reserved Font Name, so a modified copy must be renamed |
+
+Rules, enforced by tests:
+
+- Only greeting modules may use these roles (`INTERLUDE_ROLES` in `app/style.py`; `tests/test_style.py`).
+  Never for data, labels, or anything someone needs to read quickly.
+- Greeting frames are drawn with `style.interlude_screen()`: one centred line, white on pure black, full bleed, no
+  header. Frames are snapped to pure black/white so they can use the fast A2 mode.
+- They pass every other conformance check (size, inks, minimum size, safe edges, collisions). Only the header/margin
+  check is replaced by "pure black/white" (`FULL_BLEED` in `tests/test_pages_conform.py`).
+- Principle 9 applies: shown for seconds, then the bus screen always comes back.
+
+Adding a face: bundle a SIL OFL font with its license as `OFL-<Family>.txt` (the font file is `<Family>-*.ttf`),
+add one line to `_FILES`, one role to `ROLES` and the role to `INTERLUDE_ROLES`. The license test covers it.
+
 ## Components
 
 | Component | What it is |
@@ -56,6 +79,7 @@ Fonts: bundled Barlow (SIL OFL, `app/assets/fonts/`). Set `EINK_FONT_DIR` to a f
 | `style.draw(d, xy, text, ROLE, fill=, bold=, anchor=)` | All text goes through this; the size comes from the role |
 | `style.fit_text(...)` | Truncate with an ellipsis; text is never shrunk below its role |
 | `style.message_screen(title, message)` | Empty / error / offline screen |
+| `style.interlude_screen(message, role=)` | Full-bleed black greeting frame; see "Display faces" above |
 
 ## States every page must handle
 

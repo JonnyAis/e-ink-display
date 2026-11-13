@@ -8,6 +8,7 @@ from IT8951.display import AutoEPDDisplay
 from IT8951 import constants
 from app.predictor.pace import DeterministicPredictor
 from app import rotation as sports_rotation
+from app import greetings as greeting_mod
 
 # ========= ORIENTATION & SPEED =========
 FLIP_X = False
@@ -202,6 +203,12 @@ def draw_full(display, img):
     img = transform_full(img)
     display.frame_buf.paste(img)
     display.draw_full(MODE_GC16)
+
+def draw_full_a2(display, img):
+    """Full-screen push in the fast black/white A2 mode (well under a second). Only for pure black/white frames."""
+    img = transform_full(img)
+    display.frame_buf.paste(img)
+    display.draw_full(MODE_A2)
 
 def draw_partial(display, logical_bbox, subimg, mode):
     W, H = display.epd.width, display.epd.height
@@ -659,6 +666,9 @@ def main():
     # Sports pages (Celtics, scores) rotate in between stretches of the bus screen; see app/rotation.py
     rotation = sports_rotation.from_config()
     rotation.start_worker((W, H))
+    # Greetings ("hello, <name>") are opt-in via config.toml [[greetings]]; see app/greetings/
+    greetings = greeting_mod.from_config(size=(W, H))
+    logging.info("greetings: %s", [(g.style, g.every_s, g.show_s) for g in greetings] or "none")
     logging.info("Panel %dx%d  SAFE_RIGHT=%d  SPI=%.0fMHz", W, H, SAFE_RIGHT, SPI_HZ/1e6)
     
     # Initialize predictor for enhanced ETAs
@@ -995,16 +1005,28 @@ def main():
             if last_right_img: draw_partial(display, RIGHT_BOX, last_right_img, MODE_GL16)
             main._last_full = time.monotonic()
 
+        def restore_bus():
+            full = Image.new('L', (W, H), 255)
+            full.paste(render_nav_complete(W_SAFE, datetime.now(), logo_cache), (0,0))
+            ImageDraw.Draw(full).rectangle(RIGHT_STRIP, fill=255)
+            draw_full(display, full)
+            if last_left_img:  draw_partial(display, LEFT_BOX,  last_left_img,  MODE_GL16)
+            if last_right_img: draw_partial(display, RIGHT_BOX, last_right_img, MODE_GL16)
+            main._last_full = time.monotonic()
+
+        # Greeting: pure black/white frames pushed with A2 (fast, so a 2 s greeting is really on screen for ~2 s),
+        # then a full GC16 restore of the bus screen to clear A2 ghosting. At most one per tick.
+        greeting = greeting_mod.next_due(greetings)
+        if greeting is not None:
+            try:
+                greeting.run(show=lambda img: draw_full_a2(display, img), restore=restore_bus)
+                logging.info("greeting shown (%s)", greeting.style)
+            except Exception as e:
+                logging.error("greeting failed: %s", e)
+            badge_shown = False   # overlays are gone after the full redraw
+
         # Sports rotation: a full-screen page for a few seconds, then the bus screen comes straight back
-        if rotation.due():
-            def restore_bus():
-                full = Image.new('L', (W, H), 255)
-                full.paste(render_nav_complete(W_SAFE, datetime.now(), logo_cache), (0,0))
-                ImageDraw.Draw(full).rectangle(RIGHT_STRIP, fill=255)
-                draw_full(display, full)
-                if last_left_img:  draw_partial(display, LEFT_BOX,  last_left_img,  MODE_GL16)
-                if last_right_img: draw_partial(display, RIGHT_BOX, last_right_img, MODE_GL16)
-                main._last_full = time.monotonic()
+        elif rotation.due():
             try:
                 shown = rotation.run(show=lambda img: draw_full(display, img), restore=restore_bus)
                 logging.info("rotation showed %s", shown)

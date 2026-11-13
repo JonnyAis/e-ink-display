@@ -55,3 +55,26 @@ def test_pages_do_not_load_fonts_or_use_raw_grays(path):
         if isinstance(node, ast.ImportFrom) and node.module == "PIL" and any(a.name == "ImageFont" for a in node.names):
             problems.append(f"line {node.lineno}: imports ImageFont - fonts come from app.style")
     assert not problems, f"{path.name} breaks the style rules:\n  " + "\n  ".join(problems)
+
+
+def _is_interlude(rel):
+    return rel.startswith("greetings/") or rel == "preview_greetings.py"
+
+
+@pytest.mark.parametrize("path", SOURCES, ids=lambda p: str(p.relative_to(APP)))
+def test_novelty_face_only_on_interludes(path):
+    """The SPOOKY display face is a documented exception for interludes, never for data pages."""
+    if _is_interlude(path.relative_to(APP).as_posix()):
+        return
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    used = [n.lineno for n in ast.walk(tree)
+            if isinstance(n, ast.Constant) and n.value in style.INTERLUDE_ROLES]
+    assert not used, f"{path.name} uses an interlude-only role on lines {used}; see STYLE_GUIDE 'Display-face exception'"
+
+
+@pytest.mark.parametrize("role", sorted(style.INTERLUDE_ROLES))
+def test_display_faces_are_bundled_with_their_license(role):
+    """Every display face is a bundled SIL OFL font with its license next to it (OFL-<Family>.txt)."""
+    family = style._FILES[style.ROLES[role][1]].split("-")[0]
+    assert style.font(role).getname()[0].replace(" ", "") == family
+    assert "Open Font License" in (style._BUNDLED / f"OFL-{family}.txt").read_text(encoding="utf-8")

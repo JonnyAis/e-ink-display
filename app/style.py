@@ -46,11 +46,16 @@ ROLES = {
     "HEADING": (60,  "bold"),     # panel titles
     "BODY":    (52,  "regular"),  # table rows, lists
     "LABEL":   (44,  "regular"),  # captions, units, status tags
+    # Deliberate exception: novelty display faces for greetings only (see
+    # docs/STYLE_GUIDE.md, "Display faces"). Never use them for data.
+    "SPOOKY":  (320, "spooky"),   # Creepster, SIL OFL 1.1 (Font Diner, Inc)
 }
+INTERLUDE_ROLES = frozenset({"SPOOKY"})   # roles only greetings (app/greetings/) may use
 assert all(size >= MIN_TEXT_PX for size, _ in ROLES.values())
 
 _BUNDLED = Path(__file__).resolve().parent / "assets" / "fonts"
-_FILES = {"regular": "Barlow-Regular.ttf", "bold": "Barlow-SemiBold.ttf"}
+_FILES = {"regular": "Barlow-Regular.ttf", "bold": "Barlow-SemiBold.ttf",
+          "spooky": "Creepster-Regular.ttf"}
 _OVERRIDE = {"regular": "Font-Regular.ttf", "bold": "Font-Bold.ttf"}  # optional EINK_FONT_DIR
 
 
@@ -58,7 +63,7 @@ _OVERRIDE = {"regular": "Font-Regular.ttf", "bold": "Font-Bold.ttf"}  # optional
 def _load(size: int, weight: str):
     cands = []
     override = os.environ.get("EINK_FONT_DIR")
-    if override:
+    if override and weight in _OVERRIDE:
         cands.append(Path(override) / _OVERRIDE[weight])
     cands.append(_BUNDLED / _FILES[weight])
     cands.append(Path("/usr/share/fonts/truetype/dejavu") /
@@ -74,7 +79,7 @@ def _load(size: int, weight: str):
 def font(role: str, bold: bool | None = None):
     """Font for a type role. `bold` overrides the role's default weight."""
     size, weight = ROLES[role]
-    if bold is not None:
+    if bold is not None and weight in ("regular", "bold"):
         weight = "bold" if bold else "regular"
     return _load(size, weight)
 
@@ -171,3 +176,19 @@ def message_screen(title, message, *, size=PANEL, stale_minutes=None):
     W, H = size
     draw(d, (W // 2, (H + HEADER_H) // 2), message, "DISPLAY", anchor="mm")
     return img
+
+
+def interlude_screen(message, *, role="SPOOKY", size=PANEL):
+    """Full-bleed interlude: one message, white on pure black, centred.
+
+    Uses only INK and PAPER, so the whole frame is A2-safe (the fast black/white
+    update mode). It has no header on purpose: it is on screen for a moment and
+    then the primary screen comes back (principle 9).
+    """
+    img = Image.new("L", size, INK)
+    d = ImageDraw.Draw(img)
+    W, H = size
+    text = fit_text(d, message, role, W - 2 * (MARGIN + SAFE_EDGE))
+    draw(d, (W // 2, H // 2), text, role, fill=PAPER, anchor="mm")
+    # Snap anti-aliased edges to pure black/white so A2 shows exactly this frame.
+    return img.point(lambda v: PAPER if v >= 128 else INK)

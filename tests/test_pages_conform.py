@@ -9,6 +9,8 @@ from app.pages.sports import render_sports_page
 from app.preview_team import NOW, variants
 from app.preview_sports import GAMES
 from app.pages.team import render_team
+from app import greetings
+from app.preview_greetings import STATES as GREETING_STATES, variants as greeting_variants
 from helpers import overlaps, record_drawing
 
 W, H = style.PANEL
@@ -25,6 +27,14 @@ PAGES.update({
     "sports/empty": lambda: render_sports_page([], "8:14 PM"),
     "message/offline": lambda: style.message_screen("Team", "No data yet", stale_minutes=0),
 })
+PAGES.update({   # every frame of every greeting style, rendered inside the test so its drawing is recorded
+    f"greeting/{st}/{state}/{i}": (lambda st=st, state=state, i=i: greetings.render(st, GREETING_STATES[state], show_s=10.0)[i][0])
+    for (st, state), frames in greeting_variants().items() for i in range(len(frames))
+})
+
+# Full-bleed interludes (docs/STYLE_GUIDE.md, "Display-face exception"): black, no header, shown for
+# seconds. They skip only the header/margin check; every other rule still applies, plus pure black/white.
+FULL_BLEED = {n for n in PAGES if n.startswith("greeting/")}
 
 
 @pytest.fixture(params=sorted(PAGES), ids=str)
@@ -66,6 +76,9 @@ def test_no_text_collisions(page):
 
 def test_has_header_and_clear_margins(page):
     name, img, _ = page
+    if name in FULL_BLEED:
+        assert {c for _, c in img.getcolors()} <= {style.INK, style.PAPER}, f"{name} must be pure black/white (A2-safe)"
+        return
     px = img.load()
     assert px[5, 5] == 0 and px[W - 6, 5] == 0, f"{name} has no header bar"
     e = style.SAFE_EDGE

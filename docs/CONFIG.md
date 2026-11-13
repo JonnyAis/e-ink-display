@@ -7,7 +7,7 @@ This repo is shared, so it holds **code and neutral defaults only**. Anything th
 |---|---|---|
 | Code, pages, tests, docs | this repo | yes |
 | Neutral defaults (example team, empty stop list) | `config.example.toml` | yes |
-| Your team, bus stops, greeting name | `config.toml` (repo root) or `~/.config/eink/config.toml` | **no** (git-ignored) |
+| Your team, bus stops, greetings (names) | `config.toml` (repo root) or `~/.config/eink/config.toml` | **no** (git-ignored) |
 | API keys (`OBA_KEY`) | `.env` on the device | **no** (git-ignored) |
 | Pi host / user | `pi.env` in the repo root or `~/.config/eink/pi.env` (`PI_HOST=...`, `PI_USER=...`), one per PC | **no** (git-ignored) |
 | Logos, reference photos, one-off pages for your house | a private folder or private repo of your own | **no** |
@@ -48,3 +48,17 @@ Matching ignores case and needs at least 4 characters.
 Values that are also in `config.example.toml` are ignored, so following the example team is fine.
 
 Git history is not rewritten by any of this: anything committed before stays in history.
+
+## Greetings
+Short full-screen "hello, <name>" moments over the bus screen. Off unless you list them; one block each:
+```toml
+[[greetings]]
+name = "Alex"          # empty -> a plain "hello"
+style = "spooky"       # see app/greetings/ for the styles
+every_secs = 60        # how often
+show_secs = 2          # how long it stays up; must be less than every_secs
+```
+Entries with an unknown style or a `show_secs` that isn't shorter than `every_secs` are logged and skipped.
+The older single setting `[greeting] name = "..."` still works and means one spooky greeting every 60 s for 2 s.
+The names are personal values, so after adding one, refresh the CI copy with `Pi-SyncPrivacyTerms`, and copy your
+`config.toml` to the Pi (`Pi-PushConfig`): git deploys don't carry it.

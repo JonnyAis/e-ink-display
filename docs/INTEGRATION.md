@@ -50,3 +50,13 @@ Settings live in `config.toml` under `[rotation]` (defaults and comments in `con
 IDs and column titles from `[bus] stops` / `titles`; it exits with a message if the stops are not set.
 
 The Marsden fonts and transit logo stay on the Pi in `~/transit-display/assets/` (licensed; not in git).
+
+## Greetings (wired in)
+`app/main.py` builds `greetings.from_config()` at start-up and, on each tick before the sports rotation check,
+runs at most one due greeting: its frames go out with `draw_full_a2` (pure black/white, well under a second each),
+then `restore_bus` does the usual full GC16 redraw. A full GC16 refresh takes 2-3 s, which is why greetings use A2:
+with GC16 a 2 s greeting would barely appear. Each showing still costs one A2 push plus one full restore.
+
+Adding a style: create `app/greetings/<style>.py` with a function decorated `@style("<style>")` that returns
+`[(image, hold_seconds), ...]`, add the module name to `STYLE_MODULES` in `app/greetings/__init__.py`, and run
+`python -m app.preview_greetings`. Tests pick up every registered style automatically.
