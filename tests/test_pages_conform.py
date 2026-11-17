@@ -69,9 +69,11 @@ def test_text_stays_inside_safe_edges(page):
 
 def test_no_text_collisions(page):
     name, _, rec = page
-    for i, (a, ta) in enumerate(rec.texts):
-        for b, tb in rec.texts[i + 1:]:
-            assert not overlaps(a, b), f"{name}: '{ta}' overlaps '{tb}'"
+    # Texts on different images (other frames of a multi-frame greeting) never collide.
+    drawn = list(zip(rec.texts, rec.owners))
+    for i, ((a, ta), oa) in enumerate(drawn):
+        for (b, tb), ob in drawn[i + 1:]:
+            assert oa is not ob or not overlaps(a, b), f"{name}: '{ta}' overlaps '{tb}'"
 
 
 def test_has_header_and_clear_margins(page):

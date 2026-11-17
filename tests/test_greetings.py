@@ -132,3 +132,23 @@ def test_next_due_picks_one():
     assert greetings.next_due([a, b]) is None
     c.t += 61
     assert greetings.next_due([a, b]) is a
+
+
+@pytest.mark.parametrize("name, built", [
+    ("Sam", ["S", "Sa", "Sam"]),
+    ("", ["h", "he", "hel", "hell", "hello"]),
+])
+def test_slow_build_adds_letters_one_frame_at_a_time(name, built):
+    with record_drawing() as rec:
+        frames = greetings.render("slow_build", name, show_s=10.0)
+    assert [t for _, t in rec.texts] == built
+    assert len(frames) == len(built)
+    assert abs(sum(hold for _, hold in frames) - 10.0) < 1e-6
+    assert frames[-1][1] > frames[0][1]          # the finished name holds longest
+    for img, _ in frames:                         # every frame is A2-safe
+        assert {c for _, c in img.getcolors()} <= {0, 255}
+
+
+def test_slow_build_caps_the_number_of_steps():
+    frames = greetings.render("slow_build", "Abcdefghijklmnop", show_s=10.0)
+    assert len(frames) <= 8

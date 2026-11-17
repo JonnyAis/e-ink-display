@@ -26,10 +26,10 @@ leagues = ["NFL", "NHL"]     # leagues on the scores page: NBA, NFL, NHL, MLB, M
 favorites = []               # team abbreviations listed first on the scores page, e.g. ["NE", "BOS"]
 
 # Greetings: short full-screen "hello, <name>" moments over the bus screen. Off unless you list some here.
-# One [[greetings]] block per greeting (see docs/CONFIG.md). Styles: "spooky" (more in app/greetings/).
+# One [[greetings]] block per greeting (see docs/CONFIG.md). Styles: "spooky", "slow_build" (app/greetings/).
 #
 # [[greetings]]
 # name = "Alex"         # empty -> a plain "hello"
 # style = "spooky"
 # every_secs = 60       # how often
-# show_secs = 2         # how long it stays up (must be less than every_secs)
+# show_secs = 2         # how long it stays up (must be less than every_secs); about 10 for slow_build

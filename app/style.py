@@ -49,13 +49,14 @@ ROLES = {
     # Deliberate exception: novelty display faces for greetings only (see
     # docs/STYLE_GUIDE.md, "Display faces"). Never use them for data.
     "SPOOKY":  (320, "spooky"),   # Creepster, SIL OFL 1.1 (Font Diner, Inc)
+    "BUBBLY":  (440, "bubbly"),   # Sniglet ExtraBold, SIL OFL 1.1 (Haley Fiege and others)
 }
-INTERLUDE_ROLES = frozenset({"SPOOKY"})   # roles only greetings (app/greetings/) may use
+INTERLUDE_ROLES = frozenset({"SPOOKY", "BUBBLY"})   # roles only greetings (app/greetings/) may use
 assert all(size >= MIN_TEXT_PX for size, _ in ROLES.values())
 
 _BUNDLED = Path(__file__).resolve().parent / "assets" / "fonts"
 _FILES = {"regular": "Barlow-Regular.ttf", "bold": "Barlow-SemiBold.ttf",
-          "spooky": "Creepster-Regular.ttf"}
+          "spooky": "Creepster-Regular.ttf", "bubbly": "Sniglet-ExtraBold.ttf"}
 _OVERRIDE = {"regular": "Font-Regular.ttf", "bold": "Font-Bold.ttf"}  # optional EINK_FONT_DIR
 
 
