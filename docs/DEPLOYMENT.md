@@ -74,6 +74,18 @@ sessions deploy this way. Merging to `main` never deploys by itself. The Pi only
 A commit that fails is not retried until the tag moves again. Logs: `journalctl -u eink-autodeploy`; state in
 `~/transit-display/.autodeploy/`. Remove it with `pi_autodeploy_install.sh uninstall` on the Pi.
 
+### Shipping from GitHub (ship workflow) when `live` is protected
+If a repository rule protects the `live` tag, the workflow's own token is refused ("Cannot update this protected
+ref"), and a personal repo can't list GitHub Actions as a bypass. Give the workflow a deploy key instead, once:
+1. On your PC: `ssh-keygen -t ed25519 -N "" -C eink-ship -f eink_ship`
+2. Repo **Settings > Deploy keys > Add deploy key**: paste `eink_ship.pub`, tick **Allow write access**.
+3. Repo **Settings > Secrets and variables > Actions > New repository secret**: name `LIVE_DEPLOY_KEY`, value = the
+   whole contents of `eink_ship` (the private key). Then delete both files from your PC.
+4. Repo **Settings > Rules**, open the rule protecting `live`, **Bypass list > Add bypass > Deploy keys**, save.
+
+A write deploy key can push to any branch or tag no rule blocks, so keep the private key only in that secret.
+Revoke it any time by deleting the deploy key.
+
 ### The everyday deploy: `Pi-Ship`
 After merging to `main`, run `Pi-Ship` (from `tools/pi.ps1`). It confirms GitHub's checks passed on that exact commit,
 moves the `live` tag, starts the deploy if the Pi is reachable, and tells you whether the commit went live or the Pi

@@ -3,6 +3,10 @@ name: ship
 # Deploys to the Pi by moving the `live` tag; the Pi's auto-deploy timer picks it up within 5 minutes and rolls back
 # by itself if the new version doesn't stay up. Start it from the Actions tab ("Run workflow"), or from a Claude cloud
 # session, which can't push tags itself. Only commits already on main whose checks passed can be shipped.
+#
+# The `live` tag is protected by a repository rule. On a personal repo, GitHub Actions can't be a bypass actor, so
+# the push goes through a write-enabled deploy key (secret LIVE_DEPLOY_KEY) and the rule lists "Deploy keys" as a
+# bypass. Setup: docs/DEPLOYMENT.md, "Shipping from GitHub".
 on:
   workflow_dispatch:
     inputs:
@@ -28,6 +32,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REF: ${{ inputs.ref }}
+          LIVE_DEPLOY_KEY: ${{ secrets.LIVE_DEPLOY_KEY }}
         run: |
           set -euo pipefail
           sha=$(git rev-parse --verify "origin/$REF^{commit}" 2>/dev/null || git rev-parse --verify "$REF^{commit}")
@@ -42,5 +47,14 @@ jobs:
           current=$(git rev-parse -q --verify "refs/tags/live^{commit}" || true)
           if [ "$current" = "$sha" ]; then echo "${sha:0:7} is already live"; exit 0; fi
           git tag -f live "$sha"
-          git push -f origin refs/tags/live
+          if [ -n "${LIVE_DEPLOY_KEY:-}" ]; then
+            key="$RUNNER_TEMP/live_deploy_key"
+            ( umask 077; printf '%s\n' "$LIVE_DEPLOY_KEY" > "$key" )
+            export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            git push -f "git@github.com:$GITHUB_REPOSITORY.git" refs/tags/live
+            rm -f "$key"
+          else
+            echo "::warning::no LIVE_DEPLOY_KEY secret; pushing with the workflow token (a rule protecting live will refuse it)"
+            git push -f origin refs/tags/live
+          fi
           echo "live -> ${sha:0:7} ($(git log -1 --format=%s "$sha")). The Pi deploys it within 5 minutes." | tee -a "$GITHUB_STEP_SUMMARY"
